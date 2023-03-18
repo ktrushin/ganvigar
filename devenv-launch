@@ -1,0 +1,199 @@
+#!/bin/sh
+
+set -eu
+
+abort() {
+  echo "error: $1" >& 2
+  exit 1
+}
+
+prog=$(basename $0)
+prog_dir=$(dirname $(realpath $0))
+
+help_msg="\
+Description:
+  The program creates, starts and puts a user into a Docker container-based
+  development environment which is set up accroding to the configuration file.
+
+Usage:
+  $prog [-h] <file>
+
+Options:
+  -h
+    Print this help message and exit.
+
+Arguments:
+  <file> - the configuration file"
+
+while getopts "h" opt; do
+  case "$opt" in
+    h) echo "$help_msg"; exit 0;;
+  esac
+done
+shift "$((OPTIND-1))"
+
+if [ "$#" -ne 1 ]; then abort "wrong number of arguments"; fi
+
+config=$(cat "$1")
+
+if [ -z "$(which docker)" ]; then abort "docker runtime is not installed"; fi
+if [ -z "$(which jq)" ]; then abort "jq is not installed"; fi
+if [ -z "$(which awk)" ]; then abort "awk is not installed"; fi
+
+# Test that config is a valid JSON
+echo "$config" | jq 'empty'
+# Test that only one JSON document is in config
+echo "$config" | jq -s '
+  if length > 1 then
+    error("more than one JSON document in the file")
+  else
+    empty
+  end'
+
+
+config_get_optional() {
+  echo "$config" | jq -rM "
+    $1 |
+    if type == \"null\" then
+      empty
+    elif type == \"string\" then
+      .
+    else
+      error(\"the value of the \`$1\` field is not a string\")
+    end"
+}
+
+config_get() {
+  echo "$config" | jq -rM "
+    $1 |
+    if type == \"null\" then
+      error(\"the \`$1\` field is missing\")
+    elif type == \"string\" then
+      .
+    else
+      error(\"the value of the \`$1\` field is not a string\")
+    end"
+}
+
+config_get_languages() {
+  echo "$config" | jq -rM '
+    .languages |
+    if . == null then
+      empty
+    elif type == "array" then
+      .
+    else
+      error("the `.languages` field is not an array")
+    end |
+    [
+      .[] |
+      if type != "string" then
+        error("the element `" + . + "` of the `.languages` array " +
+              "is not a string")
+      else
+        [. , ascii_downcase]
+      end
+    ] |
+    [
+      .[] |
+      if .[1] == "c++" then
+        "cpp"
+      elif .[1] == "python" then
+        "py"
+      else
+        error("unsupported element value of the `.languages` " +
+              "array: `" + .[0] + "`; use any of: `C++`, `Python`")
+      end
+    ] |
+    join(" ")' | tr ' ' '\n' | sort | tr '\n' ' '
+}
+
+container_get_checksum() {
+  docker container inspect $1 | jq -rM '.[0].Config.Env | .[]' | \
+    awk -F'=' '$1 == "GANVIGAR_CONTAINER_CHECKSUM" {print $2}'
+}
+
+# Checksum is the MD5 hasf of all the inputs truncated
+# to the first eight characters
+compute_checksum() {
+  echo "$@" | md5sum | cut -c -8
+}
+
+base_image="ubuntu:22.04"
+components="u22 $(config_get_languages)"
+for c in $components; do
+  image_name="${image_name:-"$(id -un)/$c"}${image_name:+"-$c"}"
+  image_dockerfile="$prog_dir/docker/${c}.dockerfile"
+  image_inputs="$base_image $(cat $image_dockerfile) $(id -un) $(id -u) $(id -g)"
+  image_tag="$(compute_checksum "$image_inputs")"
+  if [ -z "$(docker image ls -q $image_name:$image_tag)" ]; then
+    docker image build -f $image_dockerfile \
+      --build-arg base=$base_image \
+      --build-arg username=$(id -un) \
+      --build-arg uid=$(id -u) \
+      --build-arg gid=$(id -g) \
+      -t $image_name:$image_tag .
+  fi
+  base_image="$image_name:$image_tag"
+done
+
+image_name=$(config_get_optional '.image.name')
+image_dockerfile=$(config_get_optional '.image.dockerfile')
+if [ -n "$image_name" -a -z "$image_dockerfile" ]; then
+  abort "the \`.image.name\` field is specified but \`.image.dockerfile\` isn't"
+fi
+if [ -z "$image_name" -a -n "$image_dockerfile" ]; then
+  abort "the \`.image.dockerfile\` field is specified but \`.image.name\` isn't"
+fi
+if [ -n "$image_name" -a -n "$image_dockerfile" ]; then
+  if [ ! -e "$image_dockerfile" ]; then
+    abort "the \`$image_dockerfile\` file does not exist"
+  fi
+  image_name=$(echo $image_name | sed s/__USER_NAME__/$(id -un)/g)
+  if grep -q '^ADD ' $image_dockerfile; then
+    msg="WARNING: The dockerfile \`$image_dockerfile\` uses the \`ADD\` command."
+    msg="$msg Using \`ADD\` for simple file copying breaks checksum computing "
+    msg="$msg in the \`$prog\`."
+    msg="$msg Consider replacing it with the \`COPY\` command where possible."
+    echo
+  fi
+  image_inputs="$base_image $(cat $image_dockerfile)"
+  files=$(sed -f $prog_dir/join_lines.sed $image_dockerfile | \
+          awk -f $prog_dir/copy_sources.awk)
+  image_inputs="$image_inputs $(find $files -type f -exec base64 {} \;)"
+  image_tag="$(compute_checksum "$image_inputs")"
+  if [ -z "$(docker image ls -q $image_name:$image_tag)" ]; then
+    docker image build -f $image_dockerfile \
+      --build-arg base=$base_image -t $image_name:$image_tag .
+  fi
+  base_image="$image_name:$image_tag"
+fi
+
+container_name=$(config_get '.container.name')
+container_name=$(echo $container_name | sed s/__USER_NAME__/$(id -un)/g)
+term=${TERM:-'linux'}
+if [ -d "$HOME/.terminfo" ]; then
+  terminfo=${TERMINFO:-"$HOME/.terminfo"}
+else
+  terminfo=${TERMINFO:-""}
+fi
+
+container_inputs="$base_image $container_name $(id -un) $(pwd) $term $terminfo"
+container_checksum=$(compute_checksum "$container_inputs")
+if [ -z "$(docker container ls -aq --filter name=$container_name)" ]; then
+  docker container create \
+    --tty --interactive --privileged --cap-add=SYS_PTRACE \
+    --name=$container_name --hostname=$container_name --user=$(id -un) \
+    --volume=$HOME:$HOME --workdir=$(pwd) \
+    --env GANVIGAR_CONTAINER_CHECKSUM=$container_checksum \
+    --env USER=$(id -un) --env USERNAME=$(id -un) --env LOGNAME=$(id -un) \
+    --env TERM=$term --env TERMINFO=$terminfo \
+    $base_image
+elif [ "$(container_get_checksum $container_name)" != "$container_checksum" ]; then
+  msg="the container \`$container_name\` already exists and has different "
+  msg="$msg configuration"
+  abort "$msg"
+fi
+
+docker container start $container_name
+docker container exec -it $container_name bash
