@@ -31,7 +31,7 @@ then starts the container and executes `bash` there interactively so the user
 "enters" the development environment. If any of the artifacts (images,
 container) already exists, it is reused.
 
-## Configuration
+### Configuration
 Ganvigar configuration file must contain a single JSON object whose fields are:
 - `languages` -- an array of strings; each string must be the name of a
   programming language; at the time of writing, `C++` and `Python` are
