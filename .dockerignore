@@ -1,0 +1,6 @@
+# Ignore everything
+*
+
+# Except the `docker` directory and license
+!/docker
+!/LICENSE

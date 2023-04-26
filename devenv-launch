@@ -122,17 +122,26 @@ compute_checksum() {
 base_image="ubuntu:22.04"
 components="u22 $(config_get_languages)"
 for c in $components; do
+  use_user_id=
+  if [ "$c" = "u22" ]; then use_user_id=1; fi
+
   image_name="${image_name:-"$(id -un)/$c"}${image_name:+"-$c"}"
   image_dockerfile="$prog_dir/docker/${c}.dockerfile"
-  image_inputs="$base_image $(cat $image_dockerfile) $(id -un) $(id -u) $(id -g)"
+  image_inputs="$base_image $(cat $image_dockerfile)"
+  if [ -n "$use_user_id" ]; then
+    image_inputs="$image_inputs  $(id -un) $(id -u) $(id -g)"
+  fi
   image_tag="$(compute_checksum "$image_inputs")"
+
+  build_args="--build-arg base=$base_image"
+  if [ -n "$use_user_id" ]; then
+    build_args="$build_args --build-arg username=$(id -un)"
+    build_args="$build_args --build-arg uid=$(id -u) "
+    build_args="$build_args --build-arg gid=$(id -g)"
+  fi
   if [ -z "$(docker image ls -q $image_name:$image_tag)" ]; then
-    docker image build -f $image_dockerfile \
-      --build-arg base=$base_image \
-      --build-arg username=$(id -un) \
-      --build-arg uid=$(id -u) \
-      --build-arg gid=$(id -g) \
-      -t $image_name:$image_tag .
+    docker image build -f $image_dockerfile $build_args \
+      -t $image_name:$image_tag $prog_dir
   fi
   base_image="$image_name:$image_tag"
 done
