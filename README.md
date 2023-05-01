@@ -6,9 +6,9 @@ to the needs of a particular project.
 
 ## Descripton
 An environment is based on the last Docker image of a created image chain. The
-very first element is Ubuntu 22.04 Docker image with common utilities installed
-and the current user mapped in the image. That image also includes tools for
-Debian packaging.
+very first element of the chain is is Ubuntu 22.04 Docker image with common
+utilities installed and the current user mapped in the image. That image also
+includes tools for Debian packaging.
 
 On top of that base image, one can add toolchains for the selected programming
 languages. At the time of writing, C++ and Python are supported. Adding a
@@ -41,15 +41,27 @@ Ganvigar configuration file must contain a single JSON object whose fields are:
   current last element of the image chain; if specified, the Docker container
   for the environment will be created from that image.
   - `name` -- the name of the custom image;
-  - `dockerfile` -- path (absolute or relative to the directory from which
-    `devenv-launch` is executed) to the dockerfileof the custom image;
-    the dockerfile must start with the following snippet:
-    ```
-    ARG base
-    FROM ${base}
-    ```
+  - `contextdir` -- the context directory with which the image is built;
+    optional; default is the current working directory;
 - `container` -- an object describing the container for the environment;
   - `name` -- the name of the container
+  - `workdir` -- working directory to switch to in the container; optional;
+    default is the current working directory
+  - `options` -- string with additional options for the
+    `docker container create` command; optional; default is empty string.
+
+If `image.name` is specified, then `devenv-launch` assumes the dockerfile for
+the image is located at the `<config_path>.dockerfile` path, where
+`<config_path>` is the argument of `devenv-launch`. The dockerfile _must_ start
+with the following snippet:
+```
+ARG base
+FROM ${base}
+```
+For the `deven-lauch` to take into account a custom dockeringore file to be
+applied ot `image.contextdir` directory, it should be placed at the
+`<config_path>.dockerfile.dockerignore` path. If such a file does not exist,
+then `<image.contextdir>/.dockerignore` is used if the latter exists.
 
 Both `image.name` and `container.name` support the `__USER_NAME__` macro, which
 is replaced with a current username by `devenv-launch`. Using `image.name`
@@ -62,38 +74,37 @@ Example:
     "languages": ["Python", "C++"],
     "image": {
         "name": "__USER_NAME__/my-proj-dev",
-        "dockerfile": "ganvigar/dev.dockerfile"
     },
     "container": {"name": "__USER_NAME__-my-proj-dev"}
 }
 ```
 
 ### Artifacts
-Given username `foo` and the above configuration, `devenv-lauch` produces the
+Given username `jdoe` and the above configuration, `devenv-lauch` produces the
 following chain of images:
 ```
-foo/u22
-foo/u22-cpp
-foo/u22-cpp-py
-foo/my-proj-dev
+jdoe/u22
+jdoe/u22-cpp
+jdoe/u22-cpp-py
+jdoe/my-proj-dev
 ```
-where `foo/u22` is the very first element of the chain. It is derived from the
+where `jdoe/u22` is the very first element of the chain. It is derived from the
 stock `ubuntu:22.04` image by adding the user and common utilities. On top of
-`foo/u22`, `foo/u22-cpp` is built by installing the C++ toolchain. The third
-element of the chain is `foo/u22-cpp-py`, which has the Python toolchain in
-addition to everything from `foo/u22-cpp`. Finaly, `foo/my-proj-dev` is built
-from `foo/u22-cpp-py` with a user-provided dockerfile.
+`jdoe/u22`, `jdoe/u22-cpp` is built by installing the C++ toolchain. The third
+element of the chain is `jdoe/u22-cpp-py`, which has the Python toolchain in
+addition to everything from `jdoe/u22-cpp`. Finaly, `jdoe/my-proj-dev` is built
+from `jdoe/u22-cpp-py` with a user-provided dockerfile.
 
 For each image in the produced chain, the tag is the abbreviated MD5 sum of the
 respective image inputs, i.e. all the data it depends on including base image
 name and tag, dockerfile, username, files copied to the image, etc.
 
-The `foo-my-proj-dev` container is created from the `foo/my-proj-dev` image.
+The `jdoe-my-proj-dev` container is created from the `jdoe/my-proj-dev` image.
 User's home directory is mapped into the container, working directory is changed
 to that from where `devenv-lauch` was run and the user is put into the
 environment under its username.
 
-One thing to be noted in the image chain is the `foo` prefix for the image
+One thing to be noted in the image chain is the `jdoe` prefix for the image
 names. Although image tags already depend on the username, having the username
 in an image name can simplify managing the images on the machines used
 collectively by several developers. The `devenv-lauch` utility adds a username
@@ -130,11 +141,10 @@ cat dangerous_experiment.conf
 {
     "image": {
         "name": "dangerous_experiment",
-        "dockerfile": "dangerous_experiment.dockerfile"
     }
     "container": {"name": "dangerous_experiment"}
 }
-$ cat dangerous_experiment.dockerfile
+$ cat dangerous_experiment.conf.dockerfile
 ARG base
 FROM ${base}
 
@@ -156,6 +166,32 @@ $ cat my-test.conf
 ```
 A similar environment for Python can be obtained by replacing `"C++"` with
 `"Python"` in the configuration file.
+
+### Environment for a Third-Party Project
+It is often convenient to place the configuration, dockerfile and dockeringore
+file for the project in the `gangivar` directory at the top of the project and
+put it under the source code versioning system. In that case, project's
+environment state is always in line with the state of the project itself.
+However convenient, the method described above is not always possible. For
+instance, when one wants to use `devenv-launch` for the project she is not
+a maintainer of. In that case, she can make use of the `image.contextdir` and
+`container.workdir` configuration options. Just put configuration, dockerfile
+and dockerignore (if necessary) elsewhere on the file system and use the path
+to the project's top dir in the configuration:
+```shell
+$ cat some/path/to/my-proj-dev.conf
+{
+    "languages": ["C++", "Python"],
+    "image": {
+        "name": "__USER_NAME__/my-proj-dev",
+        "contextdir": "/path/to/my/proj/top/dir"
+    },
+    "container": {
+        "name": "my-proj-dev",
+        "workdir": "/path/to/my/proj/top/dir"
+    }
+}
+```
 
 ### Separating compile-time and runtime dependencies for C/C++
 Given an `X` program written in C or C++, one may create two envronments: for
@@ -183,11 +219,10 @@ $ cat ganvigar/dev.conf
     "languages": ["C++"],
     "image": {
         "name": "__USER_NAME__/x-dev",
-        "dockerfile": "ganvigar/dev.dockerfile"
     },
     "container": {"name": "__USER_NAME__-x-dev"}
 }
-$ cat ganvigar/dev.dockerfile
+$ cat ganvigar/dev.conf.dockerfile
 ARG base
 FROM ${base}
 
@@ -200,11 +235,10 @@ $ cat ganvigar/test.conf
 {
     "image": {
         "name": "__USER_NAME__/x-test",
-        "dockerfile": "ganvigar/test.dockerfile"
     },
     "container": {"name": "__USER_NAME__-x-test"}
 }
-$ cat ganvigar/dev.dockerfile
+$ cat ganvigar/test.conf.dockerfile
 ARG base
 FROM ${base}
 
