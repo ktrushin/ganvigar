@@ -56,7 +56,7 @@ the image is located at the `<config_path>.dockerfile` path, where
 with the following snippet:
 ```
 ARG base
-FROM ${base}
+FROM $base
 ```
 For the `deven-lauch` to take into account a custom dockeringore file to be
 applied ot `image.contextdir` directory, it should be placed at the

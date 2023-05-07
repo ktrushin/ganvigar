@@ -176,6 +176,12 @@ if [ -n "$image_name" ]; then
     abort "the \`$image_contextdir_str\` is not a directory";
   fi
 
+  line1=$(head -n 1 $image_dockerfile)
+  line2=$(head -n 2 $image_dockerfile | tail -n 1)
+  msg="The first line in the \`$image_dockerfile\` file must be"
+  if [ "$line1" != 'ARG base' ]; then abort "$msg \`ARG base\`"; fi
+  if [ "$line2" != 'FROM $base' ]; then abort "$msg \`FROM \$base\`"; fi
+
   if grep -q '^ADD ' $image_dockerfile; then
     msg="WARNING: The dockerfile \`$image_dockerfile\` uses the \`ADD\` command."
     msg="$msg Using \`ADD\` for simple file copying breaks checksum computing "
