@@ -178,7 +178,7 @@ if [ -n "$image_name" ]; then
     msg="$msg Using \`ADD\` for simple file copying breaks checksum computing "
     msg="$msg in the \`$prog\`."
     msg="$msg Consider replacing it with the \`COPY\` command where possible."
-    echo
+    echo $msg
   fi
 
   image_inputs="$base_image $(cat $image_dockerfile)"
