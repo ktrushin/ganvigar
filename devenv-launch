@@ -43,13 +43,16 @@ if [ "$#" -ne 1 ]; then abort "wrong number of arguments"; fi
 config_path="$1"
 config=$(cat "$config_path")
 
-if ! docker --version > /dev/null; then
-  abort "docker runtime is not installed";
-fi
-if ! jq --version > /dev/null; then abort "jq is not installed"; fi
 if ! sed --version > /dev/null; then abort "sed is not installed"; fi
 if ! awk -W version > /dev/null 2>&1; then abort "awk is not installed"; fi
-
+if ! jq --version > /dev/null; then abort "jq is not installed"; fi
+if ! docker -v > /dev/null; then
+  abort "docker runtime is not installed";
+fi
+docker_version=$(docker -v | sed 's/^Docker version \([1-9][0-9]*\)\..*/\1/')
+if [ "$docker_version" -lt 19 ]; then
+  abort "Docker version is $docker_version but version 19 or higher is required"
+fi
 # Test that config is a valid JSON
 echo "$config" | jq 'empty'
 # Test that only one JSON document is in config
