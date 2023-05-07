@@ -43,9 +43,12 @@ if [ "$#" -ne 1 ]; then abort "wrong number of arguments"; fi
 config_path="$1"
 config=$(cat "$config_path")
 
-if [ -z "$(which docker)" ]; then abort "docker runtime is not installed"; fi
-if [ -z "$(which jq)" ]; then abort "jq is not installed"; fi
-if [ -z "$(which awk)" ]; then abort "awk is not installed"; fi
+if ! docker --version > /dev/null; then
+  abort "docker runtime is not installed";
+fi
+if ! jq --version > /dev/null; then abort "jq is not installed"; fi
+if ! sed --version > /dev/null; then abort "awk is not installed"; fi
+if ! awk -W version > /dev/null 2>&1; then abort "awk is not installed"; fi
 
 # Test that config is a valid JSON
 echo "$config" | jq 'empty'
