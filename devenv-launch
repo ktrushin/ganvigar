@@ -47,7 +47,7 @@ if ! docker --version > /dev/null; then
   abort "docker runtime is not installed";
 fi
 if ! jq --version > /dev/null; then abort "jq is not installed"; fi
-if ! sed --version > /dev/null; then abort "awk is not installed"; fi
+if ! sed --version > /dev/null; then abort "sed is not installed"; fi
 if ! awk -W version > /dev/null 2>&1; then abort "awk is not installed"; fi
 
 # Test that config is a valid JSON
