@@ -194,6 +194,11 @@ if [ -n "$image_name" ]; then
   fi
 
   image_inputs="$base_image $(cat $image_dockerfile)"
+  image_dockerignore="${image_dockerfile}.dockerignore"
+  if [ -e "$image_dockerignore" ]; then
+    image_inputs="$image_inputs $(cat $image_dockerignore)"
+  fi
+
   files=$(sed -f $prog_dir/join_lines.sed $image_dockerfile | \
           awk -f $prog_dir/copy_sources.awk)
   if [ -n "$files" ]; then
@@ -202,6 +207,7 @@ if [ -n "$image_name" ]; then
     image_inputs="$image_inputs $(find $files -type f -exec base64 {} \;)"
     cd $dir
   fi
+  image_inputs="$image_inputs $(realpath $image_contextdir)"
   image_tag="$(compute_checksum "$image_inputs")"
 
   if [ -z "$(docker image ls -q $image_name:$image_tag)" ]; then
