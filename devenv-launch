@@ -237,7 +237,8 @@ else
   terminfo=${TERMINFO:-""}
 fi
 
-container_inputs="$base_image $container_name $(id -un) $(pwd) $term $terminfo"
+container_inputs="$base_image $container_name $(id -un) $HOME \
+$(realpath $container_workdir) $container_options $term $terminfo"
 container_checksum=$(compute_checksum "$container_inputs")
 if [ -z "$(docker container ls -aq --filter name=$container_name)" ]; then
   DOCKER_BUILDKIT=1 docker container create \
