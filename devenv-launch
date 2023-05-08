@@ -53,6 +53,8 @@ docker_version=$(docker -v | sed 's/^Docker version \([1-9][0-9]*\)\..*/\1/')
 if [ "$docker_version" -lt 19 ]; then
   abort "Docker version is $docker_version but version 19 or higher is required"
 fi
+export DOCKER_BUILDKIT=1
+
 # Test that config is a valid JSON
 echo "$config" | jq 'empty'
 # Test that only one JSON document is in config
@@ -153,7 +155,7 @@ for c in $components; do
     build_args="$build_args --build-arg gid=$(id -g)"
   fi
   if [ -z "$(docker image ls -q $image_name:$image_tag)" ]; then
-    DOCKER_BUILDKIT=1 docker image build -f $image_dockerfile $build_args \
+    docker image build -f $image_dockerfile $build_args \
       -t $image_name:$image_tag $prog_dir
   fi
   base_image="$image_name:$image_tag"
@@ -211,7 +213,7 @@ if [ -n "$image_name" ]; then
   image_tag="$(compute_checksum "$image_inputs")"
 
   if [ -z "$(docker image ls -q $image_name:$image_tag)" ]; then
-    DOCKER_BUILDKIT=1 docker image build -f $image_dockerfile \
+    docker image build -f $image_dockerfile \
       --build-arg base=$base_image -t $image_name:$image_tag $image_contextdir
   fi
   base_image="$image_name:$image_tag"
@@ -241,7 +243,7 @@ container_inputs="$base_image $container_name $(id -un) $HOME \
 $(realpath $container_workdir) $container_options $term $terminfo"
 container_checksum=$(compute_checksum "$container_inputs")
 if [ -z "$(docker container ls -aq --filter name=$container_name)" ]; then
-  DOCKER_BUILDKIT=1 docker container create \
+  docker container create \
     --tty --interactive --privileged --cap-add=SYS_PTRACE \
     --name=$container_name --hostname=$container_name --user=$(id -un) \
     --volume=$HOME:$HOME --workdir=$container_workdir $container_options \
@@ -255,5 +257,5 @@ elif [ "$(container_get_checksum $container_name)" != "$container_checksum" ]; t
   abort "$msg"
 fi
 
-DOCKER_BUILDKIT=1 docker container start $container_name
-DOCKER_BUILDKIT=1 docker container exec -it $container_name bash
+docker container start $container_name
+docker container exec -it $container_name bash
