@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
         clang clang-15 lld llvm \
         # libc++-dev \
         clang-format clang-tidy clang-tools \
-        gdb lldb ltrace strace google-perftools valgrind \
+        gdb lldb ltrace strace google-perftools valgrind libtree \
         autoconf automake m4 autotools-dev libtool \
         make ninja-build cmake cmake-data scons meson ccache pkg-config \
         doxygen graphviz \
