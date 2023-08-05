@@ -1,5 +1,10 @@
 ARG base
-FROM ${base}
+FROM $base
+
+ARG username
+ARG groupname
+ARG uid
+ARG gid
 
 RUN apt-get update && apt-get install --yes --no-install-recommends \
         binutils g++ g++-12 mold \

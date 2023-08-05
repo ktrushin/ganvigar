@@ -1,9 +1,27 @@
-ARG base
-FROM ${base}
+# syntax=docker/dockerfile:1
 
-RUN apt-get update && apt-get install --yes --no-install-recommends \
-        python3 python3-pip python3-setuptools python3-wheel twine \
-        flake8 python3-flake8-docstrings python3-pytest-flake8 \
-        mypy mypy-doc pylint pylint-doc \
-        python3-pytest nox tox tox-delay
+ARG base
+FROM $base
+
+ARG username
+ARG groupname
+ARG uid
+ARG gid
+
 ENV PYTHONDONTWRITEBYTECODE=1
+
+# Install pyenv and all python versions
+RUN apt-get update && apt-get install --yes --no-install-recommends \
+        make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev \
+        libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
+        xz-utils tk-dev libffi-dev liblzma-dev python3-openssl
+RUN mkdir -p /extra && chown -R $username:$groupname /extra
+ENV PYENV_ROOT=/extra/pyenv
+USER $username
+RUN curl -sL https://pyenv.run | bash
+ENV PATH=$PYENV_ROOT/bin:$PATH
+RUN <<EOT bash
+    eval "$(pyenv init -)"
+    eval "$(pyenv virtualenv-init -)"
+    pyenv install 3.8 3.9 3.10 3.11 3.12-dev
+EOT

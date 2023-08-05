@@ -5,6 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM=linux
 
 ARG username
+ARG groupname
 ARG uid
 ARG gid
 ARG locale=en_US.UTF-8
