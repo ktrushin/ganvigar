@@ -53,7 +53,7 @@ Ganvigar configuration file must contain a single JSON object whose fields are:
 If `image.name` is specified, then `devenv-launch` assumes the dockerfile for
 the image is located at the `<config_path>.dockerfile` path, where
 `<config_path>` is the argument of `devenv-launch`. The dockerfile _must_ start
-with the following snippet:
+with the following snippet (not counting empty lines and comments):
 ```
 ARG base
 FROM $base

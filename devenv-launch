@@ -175,11 +175,18 @@ if [ -n "$image_name" ]; then
     abort "the \`$image_contextdir_str\` is not a directory";
   fi
 
-  line1=$(head -n 1 $image_dockerfile)
-  line2=$(head -n 2 $image_dockerfile | tail -n 1)
-  msg="The first line in the \`$image_dockerfile\` file must be"
-  if [ "$line1" != 'ARG base' ]; then abort "$msg \`ARG base\`"; fi
-  if [ "$line2" != 'FROM $base' ]; then abort "$msg \`FROM \$base\`"; fi
+  # skip empty lines and comments in the dockerfile and analyze the first
+  # two lines
+  first_two_lines=$(cat $image_dockerfile | awk '/^$/{next};/^#/{next};{printf("%s\n", $0)}' | \
+                    head -n 2 )
+  line1=$(echo "$first_two_lines" | head -n 1)
+  line2=$(echo "$first_two_lines" | tail -n 1)
+  if [ "$line1" != 'ARG base' -o "$line2" != 'FROM $base' ]; then
+    msg="The \`$image_dockerfile\` file must start "
+    msg="$msg (not counting comments and empty lines) with the following code:"
+    msg="${msg}\n\`\`\`\nARG base\nFROM \$base\n\`\`\`"
+    abort "$msg"
+  fi
 
   if grep -q '^ADD ' $image_dockerfile; then
     msg="WARNING: The dockerfile \`$image_dockerfile\` uses the \`ADD\` command."
