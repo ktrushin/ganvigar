@@ -20,7 +20,7 @@ ENV PYENV_ROOT=/extra/pyenv
 USER $username
 RUN curl -sL https://pyenv.run | bash
 ENV PATH=$PYENV_ROOT/bin:$PATH
-RUN <<EOT bash
+RUN <<EOT
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
     pyenv install 3.8 3.9 3.10 3.11 3.12-dev
