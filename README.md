@@ -43,12 +43,18 @@ Ganvigar configuration file must contain a single JSON object whose fields are:
   - `name` -- the name of the custom image;
   - `contextdir` -- the context directory with which the image is built;
     optional; default is the current working directory;
+  - `options` -- array of strings with additional options for the
+    `docker image build` command; optional; default is an empty array;
+    shell commands, if specified in the `$(<command>)` form, are evaluated
+    inside the option values;
 - `container` -- an object describing the container for the environment;
   - `name` -- the name of the container
   - `workdir` -- working directory to switch to in the container; optional;
     default is the current working directory
-  - `options` -- string with additional options for the
-    `docker container create` command; optional; default is empty string.
+  - `options` -- array of strings with additional options for the
+    `docker container create` command; optional; default is an empty array;
+    shell commands, if specified in the `$(<command>)` form, are evaluated
+    inside the option values;
 
 If `image.name` is specified, then `devenv-launch` assumes the dockerfile for
 the image is located at the `<config_path>.dockerfile` path, where

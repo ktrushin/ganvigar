@@ -90,37 +90,49 @@ config_get() {
     end"
 }
 
-config_get_languages() {
-  echo "$config" | jq -rM '
-    .languages |
+config_get_str_array() {
+  echo "$config" | jq -rM "
+    $1 |
     if . == null then
-      empty
-    elif type == "array" then
+      []
+    elif type == \"array\" then
       .
     else
-      error("the `.languages` field is not an array")
+      error(\"the \`$1\` is not an array\")
     end |
     [
       .[] |
-      if type != "string" then
-        error("the element `" + . + "` of the `.languages` array " +
-              "is not a string")
+      if type != \"string\" then
+        error(\"the element \`\" + . + \"\` of the \`$1\` array \" +
+              \"is not a string\")
       else
-        [. , ascii_downcase]
+        .
       end
-    ] |
-    [
-      .[] |
-      if .[1] == "c++" then
-        "cpp"
-      elif .[1] == "python" then
-        "py"
-      else
-        error("unsupported element value of the `.languages` " +
-              "array: `" + .[0] + "`; use any of: `C++`, `Python`")
-      end
-    ] |
-    join(" ")' | tr ' ' '\n' | sort | tr '\n' ' '
+    ]"
+}
+
+config_get_extra_options() {
+  extra_opitons=$(config_get_str_array $1)
+  extra_opitons=$(echo "$extra_opitons" | jq -rM '.[]' | sort | tr '\n' ' ')
+  eval echo $extra_opitons
+  extra_opitons=""
+}
+
+config_get_languages() {
+  languages=$(config_get_str_array '.languages')
+  languages=$(echo "$languages" | jq -rM '
+    .[] |
+    [. , ascii_downcase] |
+    if .[1] == "c++" then
+      "cpp"
+    elif .[1] == "python" then
+      "py"
+    else
+      error("unsupported element value of the `.languages` " +
+            "array: `" + .[0] + "`; use any of: `C++`, `Python`")
+    end')
+    echo "$languages" | sort | tr '\n' ' '
+    languages=""
 }
 
 container_get_checksum() {
@@ -210,12 +222,14 @@ if [ -n "$image_name" ]; then
     image_inputs="$image_inputs $(find $files -type f -exec base64 {} \;)"
     cd $dir
   fi
-  image_inputs="$image_inputs $(realpath $image_contextdir)"
+
+  image_options=$(config_get_extra_options '.image.options')
+  image_inputs="$image_inputs $image_options $(realpath $image_contextdir)"
   image_tag="$(compute_checksum "$image_inputs")"
 
   if [ -z "$(docker image ls -q $image_name:$image_tag)" ]; then
-    docker image build -f $image_dockerfile \
-        --build-arg base=$base_image -t $image_name:$image_tag $image_contextdir
+    docker image build -f $image_dockerfile --build-arg base=$base_image \
+        $image_options -t $image_name:$image_tag $image_contextdir
   fi
   base_image="$image_name:$image_tag"
 fi
@@ -230,7 +244,7 @@ if [ ! -d "$container_workdir" ]; then
   abort "the \`$container_workdir_str\` is not a directory";
 fi
 
-container_options=$(config_get_optional '.container.options')
+container_options=$(config_get_extra_options '.container.options')
 if [ -z "$container_options" ]; then container_options=''; fi
 
 term=${TERM:-'linux'}
