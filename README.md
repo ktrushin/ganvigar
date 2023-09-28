@@ -56,18 +56,33 @@ Ganvigar configuration file must contain a single JSON object whose fields are:
     shell commands, if specified in the `$(<command>)` form, are evaluated
     inside the option values;
 
-If `image.name` is specified, then `devenv-launch` assumes the dockerfile for
-the image is located at the `<config_path>.dockerfile` path, where
-`<config_path>` is the argument of `devenv-launch`. The dockerfile _must_ start
-with the following snippet (not counting empty lines and comments):
+If `image.name` is specified, then `devenv-launch` uses the following procedure
+for constructing the path of the dockerfile it is going to use for building the
+image. `devenv-launch` takes the path to the configuration file, which is
+provided as its first and the only positional argument, and replaces the
+lastmost filename extension, if any, with `.dockerfile`. The table below gives a
+few examples of transforming a configuration filepath to a dockerfile path.
+
+| config file path | dockerfile path |
+|------------------|-----------------|
+| `/path/to/my.conf` | `/path/to/my.dockerfile` |
+| `path/to/conf` | `path/to/conf.dockerfile` |
+| `my.best.conf` | `my.best.dockerfile`|
+
+The dockerfile _must_ start with the following snippet (not counting empty lines
+and comments):
 ```
 ARG base
 FROM $base
 ```
+It is the user's responsibility to place the valid dockerfile at the expected
+path.
+
 For the `deven-lauch` to take into account a custom dockeringore file to be
-applied ot `image.contextdir` directory, it should be placed at the
-`<config_path>.dockerfile.dockerignore` path. If such a file does not exist,
-then `<image.contextdir>/.dockerignore` is used if the latter exists.
+applied to `image.contextdir` directory, it should be placed at the
+`<dockerfile_path>.dockerignore` path, where `<dockerfile_path>` is constructed
+as described above. If such a file does not exist, then
+`<image.contextdir>/.dockerignore` is used if the latter exists.
 
 Both `image.name` and `container.name` support the `__USER_NAME__` macro, which
 is replaced with a current username by `devenv-launch`. Using `image.name`
@@ -150,7 +165,7 @@ cat dangerous_experiment.conf
     }
     "container": {"name": "dangerous_experiment"}
 }
-$ cat dangerous_experiment.conf.dockerfile
+$ cat dangerous_experiment.dockerfile
 ARG base
 FROM ${base}
 
@@ -228,7 +243,7 @@ $ cat ganvigar/dev.conf
     },
     "container": {"name": "__USER_NAME__-x-dev"}
 }
-$ cat ganvigar/dev.conf.dockerfile
+$ cat ganvigar/dev.dockerfile
 ARG base
 FROM ${base}
 
@@ -244,7 +259,7 @@ $ cat ganvigar/test.conf
     },
     "container": {"name": "__USER_NAME__-x-test"}
 }
-$ cat ganvigar/test.conf.dockerfile
+$ cat ganvigar/test.dockerfile
 ARG base
 FROM ${base}
 

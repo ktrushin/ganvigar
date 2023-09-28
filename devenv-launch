@@ -176,7 +176,7 @@ fi
 if [ -n "$image_name" ]; then
   image_name=$(echo $image_name | sed s/__USER_NAME__/$(id -un)/g)
 
-  image_dockerfile="$config_path.dockerfile"
+  image_dockerfile="${config_path%.*}.dockerfile"
   if [ ! -e "$image_dockerfile" ]; then
     abort "the \`$image_dockerfile\` file does not exist"
   fi
