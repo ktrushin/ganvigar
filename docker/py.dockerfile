@@ -27,4 +27,11 @@ RUN <<EOT
     eval "$(pyenv virtualenv-init -)"
     pyenv install 3.8 3.9 3.10 3.11 3.12
 EOT
+
+# Install poetry
+ENV POETRY_HOME=/extra/poetry
+RUN mkdir -p $POETRY_HOME && \
+    curl -sSL https://install.python-poetry.org | python3 -
+ENV PATH=POETRY_HOME/bin/:$PATH
+
 USER root
