@@ -1,4 +1,4 @@
-ARG base
+ARG base=zulu
 FROM $base
 
 ARG username
@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
         # @note: the `bfd` and the `gold` linkers are included in
         # the `binunitls` package
         binutils llvm libtree lld mold \
-        g++ g++-12 clang clang-15 \
-        # libc++-dev \
+        g++ g++-14 clang clang-18 \
+        libc++-dev \
         clang-format clang-tidy clang-tools \
         gdb lldb ltrace strace google-perftools valgrind \
         autoconf automake m4 autotools-dev libtool \

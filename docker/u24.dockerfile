@@ -1,5 +1,5 @@
-ARG base
-FROM ${base}
+ARG base=zulu
+FROM $base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TERM=linux
@@ -17,14 +17,6 @@ RUN mv /etc/dpkg/dpkg.cfg.d/excludes /tmp/dpkg_excludes.bk
 RUN dpkg -l | grep ^ii | cut -d' ' -f3 | \
         xargs apt-get install --yes --no-install-recommends --reinstall
 
-# Create the user and allow him to execute `sudo` without password
-RUN addgroup --gid $gid $username && \
-    adduser --uid $uid --gid $gid --home /home/$username \
-        --disabled-password --gecos '' $username && \
-    adduser $username sudo && \
-    mkdir -p /etc/sudoers.d/ && \
-    echo "$username ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$username
-
 # Install apt-utils before anything else
 # the `DEBCONF_NOWARNINGS` environment variable suppresses the
 # `debconf: delaying package configuration, since apt-utils is not installed`
@@ -32,6 +24,20 @@ RUN addgroup --gid $gid $username && \
 RUN apt-get update && \
     DEBCONF_NOWARNINGS="yes" apt-get install --yes --no-install-recommends \
         apt-utils
+
+# The Ubuntu 24.04 base image has the pre-created `ubuntu` user with
+# UID and GID equal to 1000. Often a host user has the same UID and GID, which
+# creates collision during mapping the host user to the image.
+# @see https://bugs.launchpad.net/cloud-images/+bug/2005129
+RUN touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu
+# Create the user and allow him to execute `sudo` without password
+RUN apt-get update && apt-get install --yes --no-install-recommends adduser && \
+    addgroup --gid $gid $username && \
+    adduser --uid $uid --gid $gid --home /home/$username \
+        --disabled-password --gecos '' $username && \
+    adduser $username sudo && \
+    mkdir -p /etc/sudoers.d/ && \
+    echo "$username ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$username
 
 # Set the locale
 RUN apt-get update && apt-get install --yes --no-install-recommends locales && \

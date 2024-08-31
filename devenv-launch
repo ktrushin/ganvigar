@@ -146,8 +146,8 @@ compute_checksum() {
   echo "$@" | md5sum | cut -c -8
 }
 
-base_image="ubuntu:22.04"
-components="u22 $(config_get_languages)"
+base_image="ubuntu:24.04"
+components="u24 $(config_get_languages)"
 for c in $components; do
   image_name="${image_name:-"$(id -un)/$c"}${image_name:+"-$c"}"
   image_dockerfile="$prog_dir/docker/${c}.dockerfile"
@@ -193,7 +193,10 @@ if [ -n "$image_name" ]; then
                     head -n 2 )
   line1=$(echo "$first_two_lines" | head -n 1)
   line2=$(echo "$first_two_lines" | tail -n 1)
-  if [ "$line1" != 'ARG base' -o "$line2" != 'FROM $base' ]; then
+  # The `zulu` default exist only to supress the
+  # "Default value for ARG $base results in empty or invalid base image name"
+  # warning
+  if [ "$line1" != 'ARG base=zulu' -o "$line2" != 'FROM $base' ]; then
     msg="The \`$image_dockerfile\` file must start "
     msg="$msg (not counting comments and empty lines) with the following code:"
     msg="${msg}\n\`\`\`\nARG base\nFROM \$base\n\`\`\`"

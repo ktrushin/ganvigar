@@ -1,6 +1,4 @@
-# syntax=docker/dockerfile:1
-
-ARG base
+ARG base=zulu
 FROM $base
 
 ARG username
@@ -10,28 +8,14 @@ ARG gid
 
 ENV PYTHONDONTWRITEBYTECODE=1
 
-# Install pyenv and all python versions
-RUN apt-get update && apt-get install --yes --no-install-recommends \
-        make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev \
-        libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev \
-        xz-utils tk-dev libffi-dev liblzma-dev python3-openssl
-RUN mkdir -p /extra && chown -R $username:$groupname /extra
-
-USER $username
-
-ENV PYENV_ROOT=/extra/pyenv
-RUN curl -sSL https://pyenv.run | bash
-ENV PATH=$PYENV_ROOT/bin:$PATH
-RUN <<EOT
-    eval "$(pyenv init -)"
-    eval "$(pyenv virtualenv-init -)"
-    pyenv install 3.8 3.9 3.10 3.11 3.12
-EOT
-
-# Install poetry
-ENV POETRY_HOME=/extra/poetry
-RUN mkdir -p $POETRY_HOME && \
-    curl -sSL https://install.python-poetry.org | python3 -
-ENV PATH=POETRY_HOME/bin/:$PATH
-
-USER root
+RUN add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get update && apt-get install --yes --no-install-recommends \
+    python3.9 python3.9-dev python3.9-venv \
+    python3.10 python3.10-dev python3.10-venv \
+    python3.11 python3.11-dev python3.11-venv \
+    python3.13 python3.13-dev python3.13-venv \
+    pipx
+RUN PIPX_HOME=/opt/pipx \
+    PIPX_BIN_DIR=/usr/local/bin \
+    PIPX_MAN_DIR=/usr/local/share/man \
+    pipx install poetry
