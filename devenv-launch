@@ -196,10 +196,10 @@ if [ -n "$image_name" ]; then
   # The `zulu` default exist only to supress the
   # "Default value for ARG $base results in empty or invalid base image name"
   # warning
-  if [ "$line1" != 'ARG base=zulu' -o "$line2" != 'FROM $base' ]; then
+  if [ "$line1" != 'ARG base=ubuntu:latest' -o "$line2" != 'FROM $base' ]; then
     msg="The \`$image_dockerfile\` file must start "
     msg="$msg (not counting comments and empty lines) with the following code:"
-    msg="${msg}\n\`\`\`\nARG base\nFROM \$base\n\`\`\`"
+    msg="${msg}\n\`\`\`\nARG base=ubuntu:latest  \nFROM \$base\n\`\`\`"
     abort "$msg"
   fi
 

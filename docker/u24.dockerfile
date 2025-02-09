@@ -1,4 +1,4 @@
-ARG base=zulu
+ARG base=ubuntu:latest
 FROM $base
 
 ENV DEBIAN_FRONTEND=noninteractive
