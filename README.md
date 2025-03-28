@@ -6,9 +6,9 @@ to the needs of a particular project.
 
 ## Descripton
 An environment is based on the last Docker image of a created image chain. The
-very first element of the chain is is Ubuntu 22.04 Docker image with common
-utilities installed and the current user mapped in the image. That image also
-includes tools for Debian packaging.
+very first element of the chain is the Docker image of either Ubuntu 22.04 or
+24.04 (default) with common utilities installed and the current user mapped
+in the image. That image also includes tools for Debian packaging.
 
 On top of that base image, one can add toolchains for the selected programming
 languages. At the time of writing, C++ and Python are supported. Adding a
@@ -33,6 +33,8 @@ container) already exists, it is reused.
 
 ### Configuration
 Ganvigar configuration file must contain a single JSON object whose fields are:
+- `base_image` -- the operating system the development environment is based on;
+  optional; supported values: `ubuntu:22.04`, `ubuntu:24.04` (default);
 - `languages` -- an array of strings; each string must be the name of a
   programming language; at the time of writing, `C++` and `Python` are
   supported; order in which the languages are specified does not matter;

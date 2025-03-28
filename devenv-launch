@@ -146,11 +146,24 @@ compute_checksum() {
   echo "$@" | md5sum | cut -c -8
 }
 
-base_image="ubuntu:24.04"
-components="u24 $(config_get_languages)"
+base_image=$(config_get_optional '.base_image')
+if [ -z "$base_image" ]; then base_image="ubuntu:24.04"; fi
+if [ "$base_image" = "ubuntu:22.04" ]; then
+  docker_dir="$prog_dir/docker/ubuntu/22.04"
+  base_component="u22"
+elif [ "$base_image" = "ubuntu:24.04" ]; then
+  docker_dir="$prog_dir/docker/ubuntu/24.04"
+  base_component="u24"
+else
+  msg="Unsupported base image: \`$base_image\`. "
+  msg="$msg Must be one of: \`ubuntu:22.04\`, \`ubuntu:24.04\` (default)."
+  abort "$msg"
+fi
+
+components="$base_component $(config_get_languages)"
 for c in $components; do
   image_name="${image_name:-"$(id -un)/$c"}${image_name:+"-$c"}"
-  image_dockerfile="$prog_dir/docker/${c}.dockerfile"
+  image_dockerfile="$docker_dir/${c}.dockerfile"
   image_inputs="$base_image $(cat $image_dockerfile)"
   image_inputs="$image_inputs $(id -un) $(id -gn) $(id -u) $(id -g)"
   image_tag="$(compute_checksum "$image_inputs")"
