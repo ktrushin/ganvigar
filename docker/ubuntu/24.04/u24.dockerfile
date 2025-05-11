@@ -50,7 +50,7 @@ RUN apt-get update && \
 RUN apt-get update && apt-get install --yes --no-install-recommends \
         man-db manpages manpages-dev manpages-posix manpages-posix-dev \
         apt-file apt-transport-https software-properties-common \
-        sudo lsb-release bash-completion coreutils tree less htop \
+        sudo lsb-release bash-completion coreutils kitty tree less htop \
         ack jq mawk curl wget git gnupg ca-certificates vim neovim \
         python3 python3-pip \
         # tools for building Debian packages
