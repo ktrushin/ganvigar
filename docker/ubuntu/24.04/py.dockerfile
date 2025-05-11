@@ -16,7 +16,8 @@ RUN add-apt-repository -y ppa:deadsnakes/ppa && \
     python3.12 python3.12-dev python3.12-venv \
     python3.13 python3.13-dev python3.13-venv \
     pipx
-RUN PIPX_HOME=/opt/pipx \
+
+ENV PIPX_HOME=/opt/pipx \
     PIPX_BIN_DIR=/usr/local/bin \
-    PIPX_MAN_DIR=/usr/local/share/man \
-    pipx install poetry
+    PIPX_MAN_DIR=/usr/local/share/man
+RUN pipx install poetry uv
