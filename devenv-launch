@@ -155,9 +155,22 @@ if [ "$base_image" = "ubuntu:22.04" ]; then
 elif [ "$base_image" = "ubuntu:24.04" ]; then
   docker_dir="$prog_dir/docker/ubuntu/24.04"
   base_component="u24"
+elif [ "$base_image" = "oraclelinux:8" ]; then
+  docker_dir="$prog_dir/docker/oraclelinux/8"
+  base_component="o8"
+elif [ "$base_image" = "oraclelinux:9" ]; then
+  docker_dir="$prog_dir/docker/oraclelinux/9"
+  base_component="o9"
+elif [ "$base_image" = "oraclelinux:10" ]; then
+  docker_dir="$prog_dir/docker/oraclelinux/10"
+  base_component="o10"
+elif [ "$base_image" = "amazonlinux:2023" ]; then
+  docker_dir="$prog_dir/docker/amazonlinux/2023"
+  base_component="al23"
 else
   msg="Unsupported base image: \`$base_image\`. "
-  msg="$msg Must be one of: \`ubuntu:22.04\`, \`ubuntu:24.04\` (default)."
+  msg="$msg Must be one of: \`oraclelinux:8\`,  \`oraclelinux:9\`,  \`oraclelinux:10\`,"
+  msg="$msg \`amazonlinux:2023\`, \`ubuntu:22.04\`, \`ubuntu:24.04\` (default)."
   abort "$msg"
 fi
 
