@@ -1,4 +1,4 @@
-ARG base=ubuntu:latest
+ARG base=ubuntu:24.04
 FROM $base
 
 ARG username
@@ -9,7 +9,7 @@ ARG gid
 ENV PYTHONDONTWRITEBYTECODE=1
 
 RUN add-apt-repository -y ppa:deadsnakes/ppa && \
-    apt-get update && apt-get install --yes --no-install-recommends \
+    apt-get update && apt-get install -y \
     python3.9 python3.9-dev python3.9-venv \
     python3.10 python3.10-dev python3.10-venv \
     python3.11 python3.11-dev python3.11-venv \
@@ -20,4 +20,4 @@ RUN add-apt-repository -y ppa:deadsnakes/ppa && \
 ENV PIPX_HOME=/opt/pipx \
     PIPX_BIN_DIR=/usr/local/bin \
     PIPX_MAN_DIR=/usr/local/share/man
-RUN pipx install poetry uv
+RUN pipx install poetry

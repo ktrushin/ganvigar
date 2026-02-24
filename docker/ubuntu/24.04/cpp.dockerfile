@@ -1,4 +1,4 @@
-ARG base=ubuntu:latest
+ARG base=ubuntu:24.04
 FROM $base
 
 ARG username
@@ -6,7 +6,7 @@ ARG groupname
 ARG uid
 ARG gid
 
-RUN apt-get update && apt-get install --yes --no-install-recommends \
+RUN apt-get update && apt-get install -y \
         # @note: the `bfd` and the `gold` linkers are included in
         # the `binunitls` package
         binutils llvm libtree lld mold \

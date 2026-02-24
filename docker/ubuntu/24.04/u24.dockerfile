@@ -1,4 +1,4 @@
-ARG base=ubuntu:latest
+ARG base=ubuntu:24.04
 FROM $base
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -10,48 +10,38 @@ ARG uid
 ARG gid
 ARG locale=en_US.UTF-8
 
-# Don't drop man pages and other files from the packages being installed
-RUN mv /etc/dpkg/dpkg.cfg.d/excludes /tmp/dpkg_excludes.bk
-# Reinstall all the already installed packages in order to
-# get the man pages back
-RUN dpkg -l | grep ^ii | cut -d' ' -f3 | \
-        xargs apt-get install --yes --no-install-recommends --reinstall
+# Don't drop man pages and other files from the packages being installed.
+RUN mv /etc/dpkg/dpkg.cfg.d/excludes /tmp/dpkg_excludes.bk && \
+    # Reinstall all the already installed packages in order to get the man pages back.
+    apt-get install -y --reinstall $(dpkg -l | grep ^ii | cut -d' ' -f3)
 
-# Install apt-utils before anything else
-# the `DEBCONF_NOWARNINGS` environment variable suppresses the
+# Install apt-utils before anything else.
+# The `DEBCONF_NOWARNINGS` environment variable suppresses the
 # `debconf: delaying package configuration, since apt-utils is not installed`
 # warning
-RUN apt-get update && \
-    DEBCONF_NOWARNINGS="yes" apt-get install --yes --no-install-recommends \
-        apt-utils
+RUN apt-get update && DEBCONF_NOWARNINGS="yes" apt-get install -y apt-utils
+
+# Set the locale
+RUN apt-get update && apt-get install -y locales && locale-gen $locale && \
+    update-locale LANG=$locale LC_CTYPE=$locale
+ENV LANG=$locale LANGUAGE=$locale LC_ALL=$locale
+
+# Install the `sudo` command
+RUN apt-get update && apt-get install -y sudo
 
 # The Ubuntu 24.04 base image has the pre-created `ubuntu` user with
 # UID and GID equal to 1000. Often a host user has the same UID and GID, which
 # creates collision during mapping the host user to the image.
 # @see https://bugs.launchpad.net/cloud-images/+bug/2005129
-RUN touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu
-# Create the user and allow him to execute `sudo` without password
-RUN apt-get update && apt-get install --yes --no-install-recommends adduser && \
-    addgroup --gid $gid $username && \
-    adduser --uid $uid --gid $gid --home /home/$username \
-        --disabled-password --gecos '' $username && \
-    adduser $username sudo && \
-    mkdir -p /etc/sudoers.d/ && \
+RUN touch /var/mail/ubuntu && chown ubuntu /var/mail/ubuntu && userdel -r ubuntu && \
+    # Create the user and allow them to execute `sudo` without password
+    groupadd --gid $gid $groupname && \
+    useradd --uid $uid --gid $gid --groups users,sudo --comment '' --create-home $username && \
     echo "$username ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/$username
 
-# Set the locale
-RUN apt-get update && apt-get install --yes --no-install-recommends locales && \
-    locale-gen $locale && update-locale LANG=$locale LC_CTYPE=$locale
-ENV LANG=$locale LC_ALL=$locale
-
-RUN apt-get update && \
-    TZ=UTC apt-get install --yes --no-install-recommends tzdata
-
-RUN apt-get update && apt-get install --yes --no-install-recommends \
-        man-db manpages manpages-dev manpages-posix manpages-posix-dev \
-        apt-file apt-transport-https software-properties-common \
-        sudo lsb-release bash-completion coreutils kitty tree less htop \
-        ack jq mawk curl wget git gnupg ca-certificates vim neovim \
-        python3 python3-pip \
-        # tools for building Debian packages
-        build-essential debhelper devscripts fakeroot dput
+RUN apt-get update && TZ=UTC apt-get install -y tzdata && apt-get install -y \
+    man-db manpages manpages-dev manpages-posix manpages-posix-dev apt-file apt-transport-https \
+    software-properties-common lsb-release bash-completion coreutils kitty tree less htop \
+    ack jq mawk curl wget git gnupg ca-certificates vim neovim python3 python3-pip \
+    # tools for building Debian packages
+    build-essential debhelper devscripts fakeroot dput
