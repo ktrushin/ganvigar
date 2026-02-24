@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG base
+ARG base=ubuntu:22.04
 FROM $base
 
 ARG username
