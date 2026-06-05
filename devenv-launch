@@ -303,4 +303,4 @@ elif [ "$(container_get_checksum $container_name)" != "$container_checksum" ]; t
 fi
 
 docker container start $container_name
-docker container exec -it $container_name bash
+docker container exec -it $container_name fish

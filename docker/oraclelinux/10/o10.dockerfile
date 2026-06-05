@@ -17,4 +17,4 @@ RUN groupadd --gid $gid $groupname && \
 ENV LANG=$locale LC_ALL=$locale
 
 RUN dnf install -y man-db man-pages bash-completion coreutils tree jq gnupg ca-certificates curl \
-    wget bzip2 git vim python3 python3-pip
+    wget bzip2 git vim python3 python3-pip fish

@@ -36,7 +36,7 @@ RUN groupadd --gid $gid $groupname && \
 
 RUN apt-get update && TZ=UTC apt-get install -y tzdata && apt-get install -y \
     man-db manpages manpages-dev manpages-posix manpages-posix-dev apt-file apt-transport-https \
-    software-properties-common lsb-release bash-completion coreutils kitty tree less htop \
-    ack jq mawk curl wget git gnupg ca-certificates vim neovim python3 python3-pip \
+    software-properties-common lsb-release fish bash-completion coreutils kitty-terminfo tree less \
+    htop ack jq mawk curl wget git gnupg ca-certificates vim neovim python3 python3-pip \
     # tools for building Debian packages
     build-essential debhelper devscripts fakeroot dput
