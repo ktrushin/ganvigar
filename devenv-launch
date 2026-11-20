@@ -1,7 +1,6 @@
 #!/bin/sh
 
-set -eu
-if set -o | grep -q pipefail; then set -o pipefail; fi
+set -euo pipefail
 
 abort() {
   echo "error: $1" >& 2
@@ -10,12 +9,12 @@ abort() {
 
 original_dir=$(pwd)
 cd_to_original_dir() {
-  cd $original_dir
+  cd "$original_dir"
 }
 trap cd_to_original_dir EXIT
 
-prog=$(basename $0)
-prog_dir=$(dirname $(realpath $0))
+prog=$(basename "$0")
+prog_dir=$(dirname "$(realpath "$0")")
 
 help_msg="\
 Description:
@@ -35,6 +34,7 @@ Arguments:
 while getopts "h" opt; do
   case "$opt" in
     h) echo "$help_msg"; exit 0;;
+    *) echo "unknown option: $opt"; exit 1;;
   esac
 done
 shift "$((OPTIND-1))"
@@ -113,9 +113,9 @@ config_get_str_array() {
 }
 
 config_get_extra_options() {
-  extra_opitons=$(config_get_str_array $1)
+  extra_opitons=$(config_get_str_array "$1")
   extra_opitons=$(echo "$extra_opitons" | jq -rM '.[]' | sort | tr '\n' ' ')
-  eval echo $extra_opitons
+  eval echo "$extra_opitons"
   extra_opitons=""
 }
 
@@ -178,7 +178,7 @@ components="$base_component $(config_get_languages)"
 for c in $components; do
   image_name="${image_name:-"$(id -un)/$c"}${image_name:+"-$c"}"
   image_dockerfile="$docker_dir/${c}.dockerfile"
-  image_inputs="$base_image $(cat $image_dockerfile)"
+  image_inputs="$base_image $(cat "$image_dockerfile")"
   image_inputs="$image_inputs $(id -un) $(id -gn) $(id -u) $(id -g)"
   image_tag="$(compute_checksum "$image_inputs")"
 
@@ -187,21 +187,21 @@ for c in $components; do
   build_args="$build_args --build-arg groupname=$(id -gn)"
   build_args="$build_args --build-arg uid=$(id -u) "
   build_args="$build_args --build-arg gid=$(id -g)"
-  if [ -z "$(docker image ls -q $image_name:$image_tag)" ]; then
-    docker image build -f $image_dockerfile $build_args \
-        -t $image_name:$image_tag $prog_dir
+  if [ -z "$(docker image ls -q "$image_name:$image_tag")" ]; then
+    docker image build -f "$image_dockerfile" "$build_args" \
+        -t "$image_name:$image_tag" "$prog_dir"
   fi
   base_image="$image_name:$image_tag"
 done
 
 image_name=$(config_get_optional '.image.name')
 image_contextdir_str=$(config_get_optional '.image.contextdir')
-if [ -z "$image_name" -a -n "$image_contextdir_str" ]; then
+if [ -z "$image_name" ] && [ -n "$image_contextdir_str" ]; then
   abort "the \`.image.contextdir\` field is specified but \`.image.name\` isn't"
 fi
 
 if [ -n "$image_name" ]; then
-  image_name=$(echo $image_name | sed s/__USER_NAME__/$(id -un)/g)
+  image_name=$(echo "$image_name" | sed "s/__USER_NAME__/$(id -un)/g")
 
   image_dockerfile="${config_path%.*}.dockerfile"
   if [ ! -e "$image_dockerfile" ]; then
@@ -209,67 +209,67 @@ if [ -n "$image_name" ]; then
   fi
 
   if [ -z "$image_contextdir_str" ]; then image_contextdir_str=$(pwd); fi
-  image_contextdir=$(echo $image_contextdir_str | sed "s|^~/\(.*\)|$HOME/\1|")
+  image_contextdir=$(echo "$image_contextdir_str" | sed "s|^~/\(.*\)|$HOME/\1|")
   if [ ! -d "$image_contextdir" ]; then
     abort "the \`$image_contextdir_str\` is not a directory";
   fi
 
   # skip empty lines and comments in the dockerfile and analyze the first
   # two lines
-  first_two_lines=$(cat $image_dockerfile | awk '/^$/{next};/^#/{next};{printf("%s\n", $0)}' | \
+  first_two_lines=$(cat "$image_dockerfile" | awk '/^$/{next};/^#/{next};{printf("%s\n", $0)}' | \
                     head -n 2 )
   line1=$(echo "$first_two_lines" | head -n 1)
   line2=$(echo "$first_two_lines" | tail -n 1)
   # The `zulu` default exist only to supress the
   # "Default value for ARG $base results in empty or invalid base image name"
   # warning
-  if [ "$line1" != 'ARG base=ubuntu:latest' -o "$line2" != 'FROM $base' ]; then
+  if [ "$line1" != 'ARG base=ubuntu:latest' ] || [ "$line2" != 'FROM $base' ]; then
     msg="The \`$image_dockerfile\` file must start "
     msg="$msg (not counting comments and empty lines) with the following code:"
     msg="${msg}\n\`\`\`\nARG base=ubuntu:latest  \nFROM \$base\n\`\`\`"
     abort "$msg"
   fi
 
-  if grep -q '^ADD ' $image_dockerfile; then
+  if grep -q '^ADD ' "$image_dockerfile"; then
     msg="WARNING: The dockerfile \`$image_dockerfile\` uses the \`ADD\` command."
     msg="$msg Using \`ADD\` for simple file copying breaks checksum computing "
     msg="$msg in the \`$prog\`."
     msg="$msg Consider replacing it with the \`COPY\` command where possible."
-    echo $msg
+    echo "$msg"
   fi
 
   image_inputs="$base_image $(cat $image_dockerfile)"
   image_dockerignore="${image_dockerfile}.dockerignore"
   if [ -e "$image_dockerignore" ]; then
-    image_inputs="$image_inputs $(cat $image_dockerignore)"
+    image_inputs="$image_inputs $(cat "$image_dockerignore")"
   fi
 
-  files=$(sed -f $prog_dir/join_lines.sed $image_dockerfile | \
-          awk -f $prog_dir/copy_sources.awk)
+  files=$(sed -f "$prog_dir/join_lines.sed" "$image_dockerfile" | \
+          awk -f "$prog_dir/copy_sources.awk")
   if [ -n "$files" ]; then
     dir=$(pwd)
-    cd $image_contextdir
-    image_inputs="$image_inputs $(find $files -type f -exec base64 {} \;)"
-    cd $dir
+    cd "$image_contextdir"
+    image_inputs="$image_inputs $(find "$files" -type f -exec base64 {} \;)"
+    cd "$dir"
   fi
 
   image_options=$(config_get_extra_options '.image.options')
-  image_inputs="$image_inputs $image_options $(realpath $image_contextdir)"
+  image_inputs="$image_inputs $image_options $(realpath "$image_contextdir")"
   image_tag="$(compute_checksum "$image_inputs")"
 
-  if [ -z "$(docker image ls -q $image_name:$image_tag)" ]; then
-    docker image build -f $image_dockerfile --build-arg base=$base_image \
-        $image_options -t $image_name:$image_tag $image_contextdir
+  if [ -z "$(docker image ls -q "$image_name:$image_tag")" ]; then
+    docker image build -f "$image_dockerfile" --build-arg "base=$base_image" \
+        $image_options -t "$image_name:$image_tag" "$image_contextdir"
   fi
   base_image="$image_name:$image_tag"
 fi
 
 container_name=$(config_get '.container.name')
-container_name=$(echo $container_name | sed s/__USER_NAME__/$(id -un)/g)
+container_name=$(echo "$container_name" | sed "s/__USER_NAME__/$(id -un)/g")
 
 container_workdir_str=$(config_get_optional '.container.workdir')
 if [ -z "$container_workdir_str" ]; then container_workdir_str=$(pwd); fi
-container_workdir=$(echo $container_workdir_str | sed "s|^~/\(.*\)|$HOME/\1|")
+container_workdir=$(echo "$container_workdir_str" | sed "s|^~/\(.*\)|$HOME/\1|")
 if [ ! -d "$container_workdir" ]; then
   abort "the \`$container_workdir_str\` is not a directory";
 fi
@@ -290,17 +290,17 @@ container_checksum=$(compute_checksum "$container_inputs")
 if [ -z "$(docker container ls -aq --filter name=$container_name)" ]; then
   docker container create \
       --tty --interactive --privileged --cap-add=SYS_PTRACE \
-      --name=$container_name --hostname=$container_name --user=$(id -un) \
-      --volume=$HOME:$HOME --workdir=$container_workdir $container_options \
-      --env GANVIGAR_CONTAINER_CHECKSUM=$container_checksum \
-      --env USER=$(id -un) --env USERNAME=$(id -un) --env LOGNAME=$(id -un) \
-      --env TERM=$term --env TERMINFO=$terminfo \
-      $base_image
-elif [ "$(container_get_checksum $container_name)" != "$container_checksum" ]; then
+      --name="$container_name" --hostname="$container_name" --user="$(id -un)" \
+      --volume="$HOME:$HOME" --workdir="$container_workdir" $container_options \
+      --env GANVIGAR_CONTAINER_CHECKSUM="$container_checksum" \
+      --env USER="$(id -un)" --env USERNAME="$(id -un)" --env LOGNAME="$(id -un)" \
+      --env TERM="$term" --env TERMINFO="$terminfo" \
+      "$base_image"
+elif [ "$(container_get_checksum "$container_name")" != "$container_checksum" ]; then
   msg="the container \`$container_name\` already exists and has different "
   msg="$msg configuration"
   abort "$msg"
 fi
 
-docker container start $container_name
-docker container exec -it $container_name fish
+docker container start "$container_name"
+docker container exec -it "$container_name" fish

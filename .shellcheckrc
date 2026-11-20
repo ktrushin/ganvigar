@@ -1,0 +1,2 @@
+# POSIX shell has the `pipefail` option since the POSIX.1-2024 standard version
+disable=SC3040
